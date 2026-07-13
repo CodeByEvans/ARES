@@ -1,0 +1,18 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.egg
+
+# Node / Vite
+node_modules/
+frontend/dist/
+
+# macOS
+.DS_Store
+._*
