@@ -5,19 +5,29 @@ import ChatPage from "./pages/ChatPage";
 import BucketsPage from "./pages/BucketsPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import useVoice from "./hooks/useVoice";
+import { bootstrap } from "./services/bootstrap";
 
 export default function App() {
   const [view, setView] = useState<string>("chat");
+  const [booted, setBooted] = useState(false);
   const {
     state,
     history,
     talkMode,
+    loadHistory,
     sendMessage,
     toggleTalkMode,
     STATES,
     startWakeDetection,
     stopWakeDetection,
   } = useVoice();
+
+  useEffect(() => {
+    bootstrap().then(({ sessionHistory }) => {
+      if (sessionHistory.length > 0) loadHistory(sessionHistory);
+      setBooted(true);
+    });
+  }, []);
 
   const isThinking = state === STATES.THINKING || state === STATES.SPEAKING;
 
@@ -32,6 +42,8 @@ export default function App() {
       return () => stopWakeDetection();
     }
   }, [view, talkMode]);
+
+  if (!booted) return null;
 
   return (
     <ErrorBoundary>

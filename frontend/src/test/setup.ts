@@ -90,6 +90,10 @@ class MockAudioContext {
 
 vi.stubGlobal('AudioContext', MockAudioContext)
 
+vi.mock('../services/bootstrap', () => ({
+  bootstrap: vi.fn().mockResolvedValue({ sessionHistory: [] }),
+}));
+
 Object.defineProperty(globalThis.navigator, 'mediaDevices', {
   value: {
     getUserMedia: vi.fn().mockResolvedValue({

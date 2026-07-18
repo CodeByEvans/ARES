@@ -23,6 +23,12 @@ export async function chat(prompt: string, history: Message[] = []): Promise<Ask
   return res.json() as Promise<AskResponse>
 }
 
+export async function getSessionHistory(): Promise<{ history: Message[] }> {
+  const res = await fetch(`${API_BASE}/sessions/history`)
+  if (!res.ok) throw new Error('Session history failed')
+  return res.json() as Promise<{ history: Message[] }>
+}
+
 export async function synthesizeSpeech(text: string): Promise<Blob> {
   const res = await fetch(`${API_BASE}/tts`, {
     method: 'POST',

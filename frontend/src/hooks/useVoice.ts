@@ -28,6 +28,7 @@ export interface UseVoiceReturn {
   startListening: () => void;
   stopListening: () => void;
   toggleTalkMode: () => void;
+  loadHistory: (msgs: Message[]) => void;
   clearHistory: () => void;
   sendMessage: (text: string) => Promise<void>;
   STATES: typeof STATES;
@@ -358,8 +359,14 @@ export default function useVoice(): UseVoiceReturn {
     });
   }, [stopListening, stopSpeaking, stopWakeDetection, getAudioContext]);
 
+  const loadHistory = useCallback((msgs: Message[]) => {
+    historyRef.current = msgs;
+    setHistory(msgs);
+  }, []);
+
   const clearHistory = useCallback(() => {
     stopSpeaking();
+    historyRef.current = [];
     setHistory([]);
     setState(STATES.IDLE);
   }, [stopSpeaking]);
@@ -401,6 +408,7 @@ export default function useVoice(): UseVoiceReturn {
     stopListening,
     toggleTalkMode,
     clearHistory,
+    loadHistory,
     sendMessage,
     STATES,
     analyserRef,
