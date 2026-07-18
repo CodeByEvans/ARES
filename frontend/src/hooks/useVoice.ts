@@ -41,6 +41,8 @@ export interface UseVoiceReturn {
 export default function useVoice(): UseVoiceReturn {
   const [state, setState] = useState<AppState>(STATES.IDLE);
   const [history, setHistory] = useState<Message[]>([]);
+  const historyRef = useRef<Message[]>([]);
+  historyRef.current = history;
   const [talkMode, setTalkMode] = useState(false);
   const [wakeActive, setWakeActive] = useState(false);
 
@@ -367,20 +369,19 @@ export default function useVoice(): UseVoiceReturn {
       const trimmed = text.trim();
       if (!trimmed || trimmed.length < 2) return;
 
+      const userMsg: Message = { role: "user", content: trimmed };
+      setHistory((prev) => [...prev, userMsg]);
       setState(STATES.THINKING);
 
       try {
-        const newHistory: Message[] = [
-          ...history,
-          { role: "user", content: trimmed },
-        ];
+        const newHistory: Message[] = [...historyRef.current, userMsg];
         const { response } = await chat(trimmed, newHistory);
-        setHistory([...newHistory, { role: "assistant", content: response }]);
+        setHistory((prev) => [...prev, { role: "assistant", content: response }]);
         setState(STATES.IDLE);
       } catch (err) {
         console.error("Chat error:", err);
-        setHistory((h) => [
-          ...h,
+        setHistory((prev) => [
+          ...prev,
           {
             role: "assistant",
             content: "Lo siento, hubo un error al procesar tu mensaje.",
@@ -389,7 +390,7 @@ export default function useVoice(): UseVoiceReturn {
         setState(STATES.IDLE);
       }
     },
-    [history],
+    [],
   );
 
   return {

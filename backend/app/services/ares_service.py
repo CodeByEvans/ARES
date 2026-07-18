@@ -23,13 +23,15 @@ class HttpAresService(AresService):
         payload = {
             "model": self._model,
             "input": prompt,
-            "user": self._session_id
         }
 
         if self._previous_response_id:
             payload["previous_response_id"] = self._previous_response_id
 
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "x-openclaw-session-key": self._session_id,
+        }
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
 
