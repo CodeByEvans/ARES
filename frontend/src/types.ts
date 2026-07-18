@@ -1,5 +1,5 @@
 export type AppState = 'idle' | 'listening' | 'thinking' | 'speaking'
-export type ViewKey = 'chat' | 'voice' | 'settings'
+export type ViewKey = 'home' | 'chat' | 'buckets' | 'talkMode' | 'settings'
 
 export interface Message {
   role: 'user' | 'assistant'

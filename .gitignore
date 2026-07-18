@@ -13,6 +13,13 @@ dist/
 node_modules/
 frontend/dist/
 
+# opencode
+opencode.json
+
 # macOS
 .DS_Store
 ._*
+
+#stitch
+
+stitch-export
