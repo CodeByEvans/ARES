@@ -89,6 +89,6 @@ class HttpAresService(AresService):
                 if p.get("type") == "text"
             )
             if text:
-                result.append({"role": msg.get("role", "user"), "content": text})
+                result.append({"role": msg.get("role", "user"), "content": text, "timestamp": msg.get("timestamp")} )
 
         return result
