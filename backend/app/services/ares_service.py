@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
+import json
 import httpx
 from ..core.config import settings
 
@@ -9,6 +10,10 @@ class AresService(ABC):
     async def ask(self, prompt: str, history: Optional[List[dict]] = None) -> str:
         pass
 
+    @abstractmethod
+    async def get_session_history(self, session_key: str, limit: int = 50) -> list:
+        pass
+
 
 class HttpAresService(AresService):
     def __init__(self):
@@ -16,7 +21,7 @@ class HttpAresService(AresService):
         self._model = settings.ARES_MODEL
         self._api_key = settings.ARES_API_KEY
         self._client = httpx.AsyncClient(timeout=60.0)
-        self._session_id =  settings.ARES_SESSION_ID
+        self._session_id = settings.ARES_SESSION_ID
         self._previous_response_id: Optional[str] = None
 
     async def ask(self, prompt: str, history=None) -> str:
@@ -54,3 +59,42 @@ class HttpAresService(AresService):
         except Exception as e:
             print(f"[ARES Service] ERROR: {type(e).__name__}: {e}")
             return f"Lo siento pedazo de inutil, no puedo responder en este momento. ({str(e)})"
+
+    async def get_session_history(self, session_key: str, limit: int = 50) -> list:
+        payload = {
+            "tool": "sessions_history",
+            "args": {
+                "sessionKey": session_key,
+                "limit": limit
+            }
+        }
+
+        response = await self._client.post(
+            f"{self._url}/tools/invoke",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+                "x-openclaw-session-key": session_key,
+            }
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        content_list = data.get("result", {}).get("content", [])
+        if not content_list or content_list[0].get("type") != "text":
+            return []
+
+        inner = json.loads(content_list[0].get("text", "{}"))
+        messages = inner.get("messages", [])
+
+        result = []
+        for msg in messages:
+            text = " ".join(
+                p.get("text", "") for p in msg.get("content", [])
+                if p.get("type") == "text"
+            )
+            if text:
+                result.append({"role": msg.get("role", "user"), "content": text})
+
+        return result
