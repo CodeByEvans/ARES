@@ -22,20 +22,16 @@ class HttpAresService(AresService):
         self._api_key = settings.ARES_API_KEY
         self._client = httpx.AsyncClient(timeout=60.0)
         self._session_id = settings.ARES_SESSION_ID
-        self._previous_response_id: Optional[str] = None
 
     async def ask(self, prompt: str, history=None) -> str:
         payload = {
             "model": self._model,
             "input": prompt,
+            "user": self._session_id,
         }
-
-        if self._previous_response_id:
-            payload["previous_response_id"] = self._previous_response_id
 
         headers = {
             "Content-Type": "application/json",
-            "x-openclaw-session-key": self._session_id,
         }
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
@@ -48,7 +44,6 @@ class HttpAresService(AresService):
             )
             response.raise_for_status()
             data = response.json()
-            self._previous_response_id = data.get("id")
 
             for item in data.get("output", []):
                 if item.get("type") == "message":
@@ -64,7 +59,7 @@ class HttpAresService(AresService):
         payload = {
             "tool": "sessions_history",
             "args": {
-                "sessionKey": session_key,
+                "sessionKey": f"openresponses-user:{session_key}",
                 "limit": limit
             }
         }
@@ -75,7 +70,6 @@ class HttpAresService(AresService):
             headers={
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
-                "x-openclaw-session-key": session_key,
             }
         )
         response.raise_for_status()
