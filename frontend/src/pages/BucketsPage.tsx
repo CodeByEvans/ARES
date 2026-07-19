@@ -1,10 +1,42 @@
+import { useState, useEffect } from "react";
 import TopBar from "../components/TopBar";
 import ProjectsBucket from "../components/buckets/Projectsbucket";
 import PromptsBucket from "../components/buckets/Promptsbucket";
 import ArchivesBucket from "../components/buckets/Archivesbucket";
 import FloatingActionButton from "../components/buckets/Floatingactionbutton";
+import { fetchBuckets, fetchBucketFiles } from "../services/bucketService";
+import type { BucketsData, ArchivesData } from "../types";
+
+const EMPTY_ARCHIVES: ArchivesData = { files: [], folders: [], file_count: 0 };
 
 export default function BucketsPage() {
+  const [data, setData] = useState<BucketsData | null>(null);
+  const [archives, setArchives] = useState<ArchivesData>(EMPTY_ARCHIVES);
+  const [currentPath, setCurrentPath] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [archivesLoading, setArchivesLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBuckets()
+      .then((d) => { setData(d); setError(null); })
+      .catch((e) => { setError(e.message); setData(null); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleNavigate = (path: string) => {
+    setCurrentPath(path);
+    setArchivesLoading(true);
+    fetchBucketFiles(path)
+      .then(setArchives)
+      .catch(() => setArchives(EMPTY_ARCHIVES))
+      .finally(() => setArchivesLoading(false));
+  };
+
+  const archivesDisplay = currentPath
+    ? archives
+    : (data?.archives ?? EMPTY_ARCHIVES);
+
   return (
     <>
       <TopBar />
@@ -16,14 +48,34 @@ export default function BucketsPage() {
         <div className="mb-12">
           <h2 className="font-display text-5xl font-bold text-white mb-2">Storage Buckets</h2>
           <p className="font-body text-lg text-secondary/80">
-            Organize your computational history and generated intelligence across secure, glass-morphic storage nodes.
+            Backblaze B2 — ares-storage
           </p>
+          {error && (
+            <p className="font-label text-sm text-error mt-2">
+              Failed to load bucket data: {error}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <ProjectsBucket />
-          <PromptsBucket />
-          <ArchivesBucket />
+          <ProjectsBucket
+            projects={data?.projects ?? []}
+            loading={loading}
+          />
+          <PromptsBucket
+            files={data?.prompts?.files ?? []}
+            totalSize={data?.prompts?.total_size ?? 0}
+            fileCount={data?.prompts?.file_count ?? 0}
+            loading={loading}
+          />
+          <ArchivesBucket
+            files={archivesDisplay.files}
+            folders={currentPath ? [] : (archivesDisplay.folders ?? [])}
+            fileCount={archivesDisplay.file_count}
+            loading={currentPath ? archivesLoading : loading}
+            currentPath={currentPath}
+            onNavigate={handleNavigate}
+          />
         </div>
       </section>
 

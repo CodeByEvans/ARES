@@ -1,38 +1,48 @@
 import { useMemo, useState } from "react";
 import { useMouseGlow } from "../../hooks/Usemouseglow";
+import type { B2File } from "../../types";
 
-type ArchiveStatus = "stable" | "cold" | "deprecated";
-
-interface ArchiveEntry {
-  name: string;
-  status: ArchiveStatus;
-  nodes: number;
-  lastAccess: string;
+interface Props {
+  files: B2File[];
+  folders: string[];
+  fileCount: number;
+  loading: boolean;
+  currentPath: string;
+  onNavigate: (path: string) => void;
 }
 
-const archiveEntries: ArchiveEntry[] = [
-  { name: "Quantum Simulation v1.4", status: "stable", nodes: 84, lastAccess: "2h ago" },
-  { name: "Legacy Knowledge Graph", status: "cold", nodes: 1240, lastAccess: "Dec 12, 2023" },
-  { name: "Global Trend Synthesis", status: "deprecated", nodes: 12, lastAccess: "Jan 05, 2024" },
-];
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffH = diffMs / (1000 * 60 * 60);
+  if (diffH < 1) return `${Math.round(diffH * 60)}m ago`;
+  if (diffH < 24) return `${Math.round(diffH)}h ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
-const statusLabel: Record<ArchiveStatus, string> = {
-  stable: "STABLE",
-  cold: "COLD",
-  deprecated: "DEPRECATED",
-};
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
 
-export default function ArchivesBucket() {
+export default function ArchivesBucket({ files, folders, fileCount, loading, currentPath, onNavigate }: Props) {
   const [filter, setFilter] = useState("");
   const handleMouseMove = useMouseGlow<HTMLDivElement>();
 
-  const filteredEntries = useMemo(
+  const filteredFiles = useMemo(
     () =>
-      archiveEntries.filter((entry) =>
-        entry.name.toLowerCase().includes(filter.trim().toLowerCase()),
+      files.filter((f) =>
+        f.name.toLowerCase().includes(filter.trim().toLowerCase()),
       ),
-    [filter],
+    [files, filter],
   );
+
+  const breadcrumbs = currentPath
+    ? currentPath.split("/").filter(Boolean)
+    : [];
 
   return (
     <div
@@ -50,14 +60,16 @@ export default function ArchivesBucket() {
           </div>
           <div>
             <h3 className="font-display text-2xl font-semibold">Archives</h3>
-            <span className="font-label text-xs text-on-surface-variant/60 tracking-wider">LEGACY DATA REPOSITORY</span>
+            <span className="font-label text-xs text-on-surface-variant/60 tracking-wider">
+              {loading ? "LOADING..." : `${fileCount} FILES`}
+            </span>
           </div>
         </div>
 
         <div className="relative">
           <input
             className="bg-white/5 border-none rounded-full py-2 px-6 font-label text-xs text-on-surface w-64 focus:ring-1 focus:ring-primary/50 placeholder:text-on-surface-variant/30"
-            placeholder="Filter archives..."
+            placeholder="Filter files..."
             type="text"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
@@ -66,39 +78,84 @@ export default function ArchivesBucket() {
         </div>
       </div>
 
+      {currentPath && (
+        <div className="flex items-center gap-2 mb-4 font-label text-xs text-on-surface-variant/60">
+          <button
+            className="hover:text-primary transition-colors"
+            onClick={() => onNavigate("")}
+          >
+            root
+          </button>
+          {breadcrumbs.map((crumb, i) => {
+            const path = breadcrumbs.slice(0, i + 1).join("/");
+            return (
+              <span key={crumb} className="flex items-center gap-2">
+                <span>/</span>
+                <button
+                  className="hover:text-primary transition-colors"
+                  onClick={() => onNavigate(path)}
+                >
+                  {crumb}
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/10 font-label text-sm text-secondary/60">
-              <th className="pb-4 font-normal">BUCKET NAME</th>
-              <th className="pb-4 font-normal">COMPLETION</th>
-              <th className="pb-4 font-normal">NODES</th>
-              <th className="pb-4 font-normal">LAST ACCESS</th>
+              <th className="pb-4 font-normal">NAME</th>
+              <th className="pb-4 font-normal">TYPE</th>
+              <th className="pb-4 font-normal">SIZE</th>
+              <th className="pb-4 font-normal">UPLOADED</th>
               <th className="pb-4 text-right font-normal">ACTION</th>
             </tr>
           </thead>
           <tbody className="font-body text-base">
-            {filteredEntries.map((entry) => (
-              <tr key={entry.name} className="border-b border-white/5 hover:bg-white/5 transition-colors group last:border-none">
-                <td className="py-4">{entry.name}</td>
-                <td className="py-4">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold ${
-                    entry.status === 'stable' ? 'bg-primary/10 text-primary' :
-                    entry.status === 'cold' ? 'bg-on-surface-variant/10 text-on-surface-variant' :
-                    'bg-error/10 text-error'
-                  }`}>
-                    {statusLabel[entry.status]}
-                  </span>
+            {!currentPath && folders.map((folder) => (
+              <tr
+                key={folder}
+                className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer last:border-none"
+                onClick={() => onNavigate(folder)}
+              >
+                <td className="py-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary" style={{ fontSize: 20 }}>folder</span>
+                  {folder}
                 </td>
-                <td className="py-4">{entry.nodes.toLocaleString()} Nodes</td>
-                <td className="py-4 opacity-60">{entry.lastAccess}</td>
+                <td className="py-4 opacity-40">folder</td>
+                <td className="py-4 opacity-40">—</td>
+                <td className="py-4 opacity-40">—</td>
                 <td className="py-4 text-right">
-                  <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity" aria-label={`More actions for ${entry.name}`}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>more_vert</span>
-                  </button>
+                  <span className="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity" style={{ fontSize: 20 }}>chevron_right</span>
                 </td>
               </tr>
             ))}
+            {loading ? (
+              <tr><td colSpan={5} className="py-4 opacity-40">Loading...</td></tr>
+            ) : filteredFiles.length === 0 && folders.length === 0 ? (
+              <tr><td colSpan={5} className="py-4 opacity-40">No files</td></tr>
+            ) : (
+              filteredFiles.map((file) => (
+                <tr key={file.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group last:border-none">
+                  <td className="py-4">{file.name}</td>
+                  <td className="py-4">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold bg-on-surface-variant/10 text-on-surface-variant">
+                      {file.content_type.split("/")[0] || "unknown"}
+                    </span>
+                  </td>
+                  <td className="py-4">{formatSize(file.size)}</td>
+                  <td className="py-4 opacity-60">{formatDate(file.uploaded)}</td>
+                  <td className="py-4 text-right">
+                    <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity" aria-label={`More actions for ${file.name}`}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>more_vert</span>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
