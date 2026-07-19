@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     TTS_RATE: str = "-5%"
     TTS_PITCH: str = "-1Hz"
     TTS_VOLUME: str = "+0%"
+    B2_APPLICATION_KEY_ID: str = ""
+    B2_APPLICATION_KEY: str = ""
+    B2_REALM: str = "production"
+    B2_BUCKET_NAME: str = "ares-storage"
 
     @property
     def cors_origins_list(self) -> list[str]:

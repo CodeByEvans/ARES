@@ -16,6 +16,9 @@ frontend/dist/
 # opencode
 opencode.json
 
+# venv
+venv/
+
 # macOS
 .DS_Store
 ._*
